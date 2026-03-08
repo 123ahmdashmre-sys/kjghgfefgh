@@ -141,8 +141,8 @@ async function loadDashboard() {
         document.getElementById('totalPaidDisplay').innerText = formatCurrency(totalPaidAll, 'IQD');
         document.getElementById('customerCount').innerText = allCustomers.length;
         
-        renderCustomersList(allCustomers);
-        renderPaymentCustomersList(allCustomers);
+        renderCustomersList(allCustomers.filter(c => c.balance > 0));
+        renderPaymentCustomersList(allCustomers.filter(c => c.balance <= 0));
         renderNotifications(overdueList);
     } catch (error) {
         console.error(error);
@@ -273,10 +273,15 @@ window.deleteInventoryItem = async function(id) {
 // === دوال البحث والزبائن ===
 window.filterCustomers = function() {
     const query = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = allCustomers.filter(c => 
-        c.name.toLowerCase().includes(query) || 
-        (c.phone && c.phone.includes(query))
-    );
+    let filtered;
+    if (query === '') {
+        filtered = allCustomers.filter(c => c.balance > 0);
+    } else {
+        filtered = allCustomers.filter(c => 
+            c.name.toLowerCase().includes(query) || 
+            (c.phone && c.phone.includes(query))
+        );
+    }
     renderCustomersList(filtered);
 }
 
@@ -307,7 +312,7 @@ function renderCustomersList(customers) {
 window.filterPaymentCustomers = function() {
     const query = document.getElementById('searchPaymentCustInput').value.toLowerCase();
     const filtered = allCustomers.filter(c => 
-        c.name.toLowerCase().startsWith(query)
+        c.balance <= 0 && c.name.toLowerCase().startsWith(query)
     );
     renderPaymentCustomersList(filtered);
 }
