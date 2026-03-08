@@ -1,3 +1,4 @@
+// ملف app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, enableIndexedDbPersistence, setDoc, getDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { firebaseConfig, hashPass } from './config.js';
@@ -41,6 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInv.addEventListener('input', function() {
             updateInventoryDatalist(this.value);
         });
+    }
+
+    // ربط زر الدخول بشكل مباشر لضمان عمله
+    const loginBtn = document.getElementById('adminLoginBtn');
+    if(loginBtn) {
+        loginBtn.addEventListener('click', window.checkAdminLogin);
     }
 });
 
@@ -847,5 +854,3 @@ window.editTransaction = async function(firebaseId, oldAmount) {
 
 window.logout = function() { location.reload(); }
 if(localStorage.getItem('admin_pass')) { /* Locked */ }
-
-}
