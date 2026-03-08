@@ -106,11 +106,13 @@ async function loadDashboard() {
         allCustomers.forEach(c => {
             c.balance = 0;
             const myTrans = transactions.filter(t => t.customerId === c.id);
+            myTrans.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
             
             myTrans.forEach(t => {
                 const amt = parseFloat(t.amount) || 0;
                 if (t.type === 'debt' || t.type === 'sale') c.balance += amt;
                 if (t.type === 'payment') c.balance -= amt;
+                if (c.balance <= 0) c.balance = 0;
             });
             
             if(myTrans.length > 0 && c.balance > 0) {
@@ -427,14 +429,26 @@ window.openCustomer = async function(id) {
     const q = query(collection(db, "transactions"), where("customerId", "==", id));
     const snap = await getDocs(q);
     const trans = snap.docs.map(d => ({firebaseId: d.id, ...d.data()}));
-    trans.sort((a,b) => new Date(b.date) - new Date(a.date));
+    
+    trans.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     let realTimeBalance = 0;
+    let activeTrans = [];
+
     trans.forEach(t => {
         const amt = parseFloat(t.amount) || 0;
         if (t.type === 'debt' || t.type === 'sale') realTimeBalance += amt;
         if (t.type === 'payment') realTimeBalance -= amt;
+        
+        activeTrans.push(t);
+
+        if (realTimeBalance <= 0) {
+            realTimeBalance = 0;
+            activeTrans = [];
+        }
     });
+
+    activeTrans.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     document.getElementById('view-customer').classList.remove('hidden');
     document.getElementById('custName').innerText = customer.name;
@@ -444,7 +458,7 @@ window.openCustomer = async function(id) {
     
     document.getElementById('custPasswordDisplay').innerText = customer.password || '---';
 
-    const mainTrans = realTimeBalance === 0 ? [] : trans.filter(t => t.type !== 'payment');
+    const mainTrans = activeTrans.filter(t => t.type !== 'payment');
     renderTransactions(mainTrans, customer.currency);
 }
 
@@ -456,7 +470,8 @@ window.openPaymentCustomer = async function(id) {
     const q = query(collection(db, "transactions"), where("customerId", "==", id));
     const snap = await getDocs(q);
     const trans = snap.docs.map(d => ({firebaseId: d.id, ...d.data()}));
-    trans.sort((a,b) => new Date(b.date) - new Date(a.date));
+    
+    trans.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     let realTimeBalance = 0;
     const paymentTrans = [];
@@ -466,8 +481,13 @@ window.openPaymentCustomer = async function(id) {
         if (t.type === 'payment') {
             realTimeBalance -= amt;
         }
+        if (realTimeBalance <= 0) {
+            realTimeBalance = 0;
+        }
         paymentTrans.push(t);
     });
+    
+    paymentTrans.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     document.getElementById('view-payment-customer').classList.remove('hidden');
     document.getElementById('payCustName').innerText = customer.name;
