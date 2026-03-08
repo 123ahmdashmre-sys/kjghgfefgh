@@ -444,7 +444,7 @@ window.openCustomer = async function(id) {
     
     document.getElementById('custPasswordDisplay').innerText = customer.password || '---';
 
-    const mainTrans = trans.filter(t => t.type !== 'payment');
+    const mainTrans = realTimeBalance === 0 ? [] : trans.filter(t => t.type !== 'payment');
     renderTransactions(mainTrans, customer.currency);
 }
 
@@ -465,8 +465,8 @@ window.openPaymentCustomer = async function(id) {
         if (t.type === 'debt' || t.type === 'sale') realTimeBalance += amt;
         if (t.type === 'payment') {
             realTimeBalance -= amt;
-            paymentTrans.push(t);
         }
+        paymentTrans.push(t);
     });
 
     document.getElementById('view-payment-customer').classList.remove('hidden');
@@ -792,14 +792,16 @@ function renderPaymentTransactions(transactions, currency) {
     transactions.forEach(t => {
         const div = document.createElement('div');
         div.className = 'trans-item flex flex-between';
+        let colorClass = (t.type === 'payment') ? 'trans-pay' : 'trans-debt';
+        let typeName = t.type === 'debt' ? 'دين' : (t.type === 'payment' ? 'تسديد' : 'فاتورة');
         
         div.innerHTML = `
             <div>
-                <strong class="trans-pay">تسديد</strong> <small>${t.item || t.note || ''}</small><br>
+                <strong class="${colorClass}">${typeName}</strong> <small>${t.item || t.note || ''}</small><br>
                 <small>${t.date}</small>
             </div>
             <div style="text-align:left">
-                <strong class="trans-pay">${window.formatCurrency(t.amount, currency)}</strong>
+                <strong class="${colorClass}">${window.formatCurrency(t.amount, currency)}</strong>
                 <div class="mt-2">
                     <button class="btn btn-sm btn-warning" onclick="editTransaction('${t.firebaseId}', ${t.amount})" style="padding:2px 8px; font-size:0.7rem;">✏️</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.firebaseId}')" style="padding:2px 8px; font-size:0.7rem;">🗑️</button>
