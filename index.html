@@ -59,6 +59,22 @@
                 </div>
             </div>
 
+            <div id="tab-payments" class="tab-content hidden">
+                <div class="container mt-2">
+                    <header class="card glass flex flex-between gsap-target">
+                        <h3>💰 التسديد</h3>
+                    </header>
+                    
+                    <div class="mb-2 gsap-target">
+                        <input type="text" id="searchPaymentCustInput" placeholder="بحث عن زبون..." onkeyup="filterPaymentCustomers()" class="gsap-input">
+                    </div>
+
+                    <div id="paymentCustomersList" class="gsap-target">
+                        <p style="text-align:center;">جاري المزامنة...</p>
+                    </div>
+                </div>
+            </div>
+
             <div id="tab-inventory" class="tab-content hidden">
                 <div class="container mt-2">
                     <header class="card glass flex flex-between gsap-target">
@@ -145,11 +161,34 @@
                     </div>
                 </div>
             </div>
+
+            <div id="view-payment-customer" class="hidden glass-overlay">
+                <div class="container">
+                    <button class="btn btn-sm btn-primary no-print mb-2 gsap-btn" onclick="closePaymentCustomerView()">🔙 رجوع</button>
+                    
+                    <div class="card glass center-text gsap-target">
+                        <h2 id="payCustName">...</h2>
+                        <small>الباقي الكلي</small>
+                        <div class="balance-display" id="payCustBalance" style="font-size: 2rem; font-weight: bold; color: var(--danger);">0.00</div>
+                    </div>
+
+                    <div class="card glass gsap-target">
+                        <div class="flex flex-between">
+                            <h3>سجل التسديدات</h3>
+                        </div>
+                        <div id="paymentTransactionsList"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <nav class="bottom-nav glass no-print">
             <button class="nav-item active gsap-btn" onclick="switchTab('tab-dashboard', this)">
                 <span>🏠</span> <small>الرئيسية</small>
+            </button>
+            <button class="nav-item gsap-btn" onclick="switchTab('tab-payments', this)">
+                <span>💰</span> <small>التسديد</small>
             </button>
             <button class="nav-item gsap-btn" onclick="switchTab('tab-inventory', this)">
                 <span>📦</span> <small>المخزون</small>
