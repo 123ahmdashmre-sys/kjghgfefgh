@@ -144,7 +144,7 @@ async function loadDashboard() {
         document.getElementById('customerCount').innerText = allCustomers.length;
         
         renderCustomersList(allCustomers.filter(c => c.balance > 0));
-        renderPaymentCustomersList(allCustomers.filter(c => c.balance <= 0));
+        renderPaymentCustomersList(allCustomers);
         renderNotifications(overdueList);
     } catch (error) {
         console.error(error);
@@ -314,7 +314,7 @@ function renderCustomersList(customers) {
 window.filterPaymentCustomers = function() {
     const query = document.getElementById('searchPaymentCustInput').value.toLowerCase();
     const filtered = allCustomers.filter(c => 
-        c.balance <= 0 && c.name.toLowerCase().startsWith(query)
+        c.name.toLowerCase().startsWith(query)
     );
     renderPaymentCustomersList(filtered);
 }
