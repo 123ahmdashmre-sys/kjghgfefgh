@@ -135,6 +135,7 @@ async function loadDashboard() {
         document.getElementById('customerCount').innerText = allCustomers.length;
         
         renderCustomersList(allCustomers);
+        renderPaymentCustomersList(allCustomers);
         renderNotifications(overdueList);
     } catch (error) {
         console.error(error);
@@ -296,6 +297,37 @@ function renderCustomersList(customers) {
     });
 }
 
+window.filterPaymentCustomers = function() {
+    const query = document.getElementById('searchPaymentCustInput').value.toLowerCase();
+    const filtered = allCustomers.filter(c => 
+        c.name.toLowerCase().startsWith(query)
+    );
+    renderPaymentCustomersList(filtered);
+}
+
+function renderPaymentCustomersList(customers) {
+    const list = document.getElementById('paymentCustomersList');
+    list.innerHTML = '';
+    if(customers.length === 0) {
+        list.innerHTML = '<p style="text-align:center">لا يوجد بيانات</p>';
+        return;
+    }
+    customers.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'card glass flex flex-between';
+        div.style.cursor = 'pointer';
+        div.onclick = () => openPaymentCustomer(c.id);
+        
+        let balanceColor = c.balance > 0 ? 'var(--danger)' : 'var(--accent)';
+
+        div.innerHTML = `
+            <div><strong>${c.name}</strong><br><small>${c.phone || ''}</small></div>
+            <div style="text-align:left"><span style="font-weight:bold; color:${balanceColor}">${formatCurrency(c.balance, c.currency)}</span></div>
+        `;
+        list.appendChild(div);
+    });
+}
+
 function renderNotifications(list) {
     const container = document.getElementById('alertsList');
     const badge = document.getElementById('badge-alert');
@@ -400,7 +432,41 @@ window.openCustomer = async function(id) {
     
     document.getElementById('custPasswordDisplay').innerText = customer.password || '---';
 
-    renderTransactions(trans, customer.currency);
+    const mainTrans = trans.filter(t => t.type !== 'payment');
+    renderTransactions(mainTrans, customer.currency);
+}
+
+window.openPaymentCustomer = async function(id) {
+    const customer = allCustomers.find(c => c.id == id);
+    if (!customer) return;
+    currentCustomer = customer;
+    
+    const q = query(collection(db, "transactions"), where("customerId", "==", id));
+    const snap = await getDocs(q);
+    const trans = snap.docs.map(d => ({firebaseId: d.id, ...d.data()}));
+    trans.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    let realTimeBalance = 0;
+    const paymentTrans = [];
+    trans.forEach(t => {
+        const amt = parseFloat(t.amount) || 0;
+        if (t.type === 'debt' || t.type === 'sale') realTimeBalance += amt;
+        if (t.type === 'payment') {
+            realTimeBalance -= amt;
+            paymentTrans.push(t);
+        }
+    });
+
+    document.getElementById('view-payment-customer').classList.remove('hidden');
+    document.getElementById('payCustName').innerText = customer.name;
+    document.getElementById('payCustBalance').innerText = formatCurrency(realTimeBalance, customer.currency);
+
+    renderPaymentTransactions(paymentTrans, customer.currency);
+}
+
+window.closePaymentCustomerView = function() {
+    document.getElementById('view-payment-customer').classList.add('hidden');
+    loadDashboard();
 }
 
 window.deleteCustomer = async function() {
@@ -708,6 +774,30 @@ function renderTransactions(transactions, currency) {
     });
 }
 
+function renderPaymentTransactions(transactions, currency) {
+    const list = document.getElementById('paymentTransactionsList');
+    list.innerHTML = '';
+    transactions.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'trans-item flex flex-between';
+        
+        div.innerHTML = `
+            <div>
+                <strong class="trans-pay">تسديد</strong> <small>${t.item || t.note || ''}</small><br>
+                <small>${t.date}</small>
+            </div>
+            <div style="text-align:left">
+                <strong class="trans-pay">${window.formatCurrency(t.amount, currency)}</strong>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-warning" onclick="editTransaction('${t.firebaseId}', ${t.amount})" style="padding:2px 8px; font-size:0.7rem;">✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${t.firebaseId}')" style="padding:2px 8px; font-size:0.7rem;">🗑️</button>
+                </div>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
 // === حذف وتعديل العمليات (مع حماية 121) ===
 window.deleteTransaction = async function(firebaseId) {
     if(!verifyAdminCode()) return; // طلب الكود
@@ -715,7 +805,11 @@ window.deleteTransaction = async function(firebaseId) {
     if(confirm("هل أنت متأكد من حذف هذه العملية؟")) {
         try {
             await deleteDoc(doc(db, "transactions", firebaseId));
-            openCustomer(currentCustomer.id); // تحديث القائمة
+            if(!document.getElementById('view-payment-customer').classList.contains('hidden')) {
+                openPaymentCustomer(currentCustomer.id);
+            } else {
+                openCustomer(currentCustomer.id);
+            }
             loadDashboard();
         } catch(e) { alert("خطأ: " + e.message); }
     }
@@ -742,10 +836,16 @@ window.editTransaction = async function(firebaseId, oldAmount) {
         
         await updateDoc(doc(db, "transactions", firebaseId), updateData);
         alert("تم التعديل");
-        openCustomer(currentCustomer.id);
+        if(!document.getElementById('view-payment-customer').classList.contains('hidden')) {
+            openPaymentCustomer(currentCustomer.id);
+        } else {
+            openCustomer(currentCustomer.id);
+        }
         loadDashboard();
     } catch(e) { alert("خطأ: " + e.message); }
 }
 
 window.logout = function() { location.reload(); }
 if(localStorage.getItem('admin_pass')) { /* Locked */ }
+
+}
